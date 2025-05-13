@@ -18,6 +18,9 @@ export class User {
   @Column({ unique: true })
   email: string;
 
+  @Column({ length: 500})
+  password: string;
+
   @CreateDateColumn()
   created_at: Date;
 
@@ -30,7 +33,7 @@ export class User {
   @Column({
     type: 'enum',
     enum: Role,
-    default: Role.TEACHER,
+    default: Role.GUEST,
   })
   role: Role;
 }
