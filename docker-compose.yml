@@ -8,11 +8,16 @@ services:
       POSTGRES_PASSWORD: ${API_PG_PASS}
       POSTGRES_DB: ${API_PG_DB}
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - my-network
     volumes:
       - api-data:/var/lib/postgresql/data_ltd
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=${API_PG_PASS} pg_isready -h localhost -p 5432 -U ${API_PG_USER} -d ${API_PG_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   postgres-auth:
     image: postgres:latest
@@ -23,11 +28,16 @@ services:
       POSTGRES_PASSWORD: ${AUTH_PG_PASS}
       POSTGRES_DB: ${AUTH_PG_DB}
     ports:
-      - "5433:5432"
+      - "5434:5432"
     networks:
       - my-network
     volumes:
       - auth-data:/var/lib/postgresql/data_ltd
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD=${AUTH_PG_PASS} pg_isready -h localhost -p 5432 -U ${AUTH_PG_USER} -d ${AUTH_PG_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   backend-api:
     build: ./backend-api
@@ -38,7 +48,8 @@ services:
       API_PG_PASS: ${API_PG_PASS}
       API_PG_DB: ${API_PG_DB}
     depends_on:
-      - postgres-api
+      postgres-api:
+        condition: service_healthy
     ports:
       - "3001:3000"
     volumes:
@@ -47,22 +58,58 @@ services:
     networks:
       - my-network
 
-  backend-authentication:
-    build: ./backend-authentication
-    container_name: backend-authentication
+  # backend-authentication:
+  #   build: ./backend-authentication
+  #   container_name: backend-authentication
+  #   env_file:
+  #     - ./backend-authentication/.env
+  #   environment:
+  #     AUTH_PG_HOST: postgres-auth
+  #     AUTH_PG_PORT: 5432
+  #     AUTH_PG_USER: ${AUTH_PG_USER}
+  #     AUTH_PG_PASS: ${AUTH_PG_PASS}
+  #     AUTH_PG_DB: ${AUTH_PG_DB}
+  #     PASSWORD_RESET_TTL: ${PASSWORD_RESET_TTL:-900}
+  #     VERIFICATION_TOKEN_TTL: ${VERIFICATION_TOKEN_TTL:-86400}
+  #     TWO_FACTOR_ISSUER: ${TWO_FACTOR_ISSUER:-Auth Service}
+  #     ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  #     ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+  #     ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+  #     ADMIN_NAME: ${ADMIN_NAME:-Administrator}
+  #     ADMIN_INSTITUTIONS: ${ADMIN_INSTITUTIONS:-default}
+  #   depends_on:
+  #     postgres-auth:
+  #       condition: service_healthy
+  #   ports:
+  #     - "3002:3000"
+  #   volumes:
+  #     - ./backend-authentication:/usr/src/app
+  #     - /usr/src/app/node_modules
+  #   networks:
+  #     - my-network
+
+  backend-authentication-laravel:
+    build: ./backend-authentication-laravel
+    container_name: backend-authentication-laravel
+    env_file:
+      - ./backend-authentication-laravel/.env
     environment:
-      DATABASE_HOST: postgres-auth
-      AUTH_PG_USER: ${AUTH_PG_USER}
-      AUTH_PG_PASS: ${AUTH_PG_PASS}
-      AUTH_PG_DB: ${AUTH_PG_DB}
-      JWT_SECRET: ${JWT_SECRET}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_DATABASE: db_auth
+      DB_USERNAME: authdb
+      DB_PASSWORD: eSt@c1oLTd
+      APP_URL: http://localhost:8001
     depends_on:
-      - postgres-auth
+      postgres-auth:
+        condition: service_healthy
     ports:
-      - "3002:3000"
+      - "8001:8000"
     volumes:
-      - ./backend-authentication:/usr/src/app
-      - /usr/src/app/node_modules
+      - ./backend-authentication-laravel:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
     networks:
       - my-network
 

@@ -96,3 +96,129 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+-
+
+
+create table instituicao (
+id serial primary key,
+nome varchar(500)
+);
+create table papel (
+id serial primary key,
+nome varchar(500)
+);
+create table pessoa (
+id serial primary key,
+nome varchar(500),
+matricula varchar(500),
+email varchar(500),
+senha varchar(2000),
+papel_id integer,
+foreign key(papel_id) references papel(id)
+);
+insert into papel(nome) values ('Admin'), ('Professor'), ('Aluno') ;
+insert into papel(nome) values ('Monitor(a)');
+select * from papel;
+insert into pessoa (matricula, nome, email, senha, papel_id)
+values ('1033', 'André', 'andre@estacio', '123',1),
+('10399', 'Antonio', 'antonio@estacio', '123',2),
+('1089', 'Laura', 'laura@estacio', '123',2),
+('10889', 'Gabriel', 'gabriel@estacio', '123',3),
+('10897', 'Rodrigo', 'rodrigo@estacio', '123',3);
+select * from papel;
+select * from pessoa;
+--- atualizar usuraio
+begin;
+-- atualiza na tabela pessao papel_id = 4 onde id = 3
+update pessoa set papel_id=4 where id = 3;
+select * from pessoa;
+rollback;
+commit;
+select pe.id, pe.nome as nome_pessoa, pa.nome as papel 
+from pessoa pe, papel pa
+where pe.papel_id=pa.id;
+create table unidade(
+id serial primary key,
+nome varchar(500),
+instituicao_id integer,
+foreign key(instituicao_id) references instituicao (id)
+);
+insert into instituicao(nome) values('Estacio');
+insert into unidade(nome, instituicao_id) values('Nova America',1);
+ 
+ 
+select * from pessoa;
+select * from instituicao; 
+select * from unidade; 
+-- exercicio exiba: as  unidades com o nome das respectivas instituicoes
+select * 
+from unidade u, instituicao i
+where u.instituicao_id = i.id
+;
+ 
+select * from instituicao, unidade;
+------------
+create table disciplina(
+id serial primary key,
+nome varchar(500)
+);
+insert into disciplina(nome) values('Banco de dados'), ('Tec Web');
+select * from disciplina;
+create table turma (
+id serial primary key,
+numero varchar(50),
+periodo varchar(50),
+horario_inicial time,
+horario_final time,
+data_inicio timestamp,
+data_fim timestamp,
+unidade_id integer,
+disciplina_id integer,
+foreign key(unidade_id) references unidade(id),
+foreign key(disciplina_id) references disciplina(id)
+);
+ 
+create table professor_turma (
+professor_id integer,
+turma_id integer,
+foreign key(professor_id) references pessoa(id),
+foreign key(turma_id) references turma(id),
+primary key(professor_id,turma_id )
+);
+ 
+ 
+select * from papel;
+select * from pessoa;
+select * from turma ;
+--exibe todos os professores
+select pe.id, pe.nome, pa.nome 
+from pessoa pe, papel pa
+where pe.papel_id= pa.id and pa.id = 2
+;
+ 
+insert into turma (
+numero, 
+periodo, 
+horario_inicial, 
+horario_final,
+data_inicio, 
+data_fim,
+unidade_id,
+disciplina_id 
+)
+values
+('3001', '2025.2', '19:00', '21:40', '2025-08-01', '2025-12-15', 1,2);
+ 
+--- exibe turma a dicplina e unidade
+select * 
+from turma t, disciplina d, unidade u
+where 
+t.unidade_id=u.id and 
+t.disciplina_id = d.id 
+;
+-- Laura professora de banco de dados 
+-- Antonio professor de tec web
+insert into professor_turma(professor_id, turma_id) values(2,3),(3,2);
+ 
+select * from professor_turma;
+-- exercicio exiba o nome do professor com sua disciplina.

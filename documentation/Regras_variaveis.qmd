@@ -1,0 +1,77 @@
+
+
+
+vamos adotar este padrão oficial:
+
+JavaScript/TypeScript (front & back)
+
+Variáveis, props, keys de JSON, funções: camelCase → scientificName, loadSpecies()
+
+Booleans: is/has/should/can + camelCase → isOpen, hasError
+
+Tipos, interfaces, enums, classes e Componentes React: PascalCase → SpeciesCard, RiskCategory
+
+Constantes e env (server): UPPER_SNAKE_CASE → API_TIMEOUT_MS, JWT_SECRET
+
+Hooks: use + Pascal → useSpeciesFilter
+
+React (front)
+
+Arquivo de componente: PascalCase → SpeciesCard.tsx
+
+Outras fontes (utils/hooks/etc.): kebab-case → string-utils.ts, use-species-filter.ts
+
+Props: PascalCase + Props → SpeciesCardProps
+
+Node (back)
+
+Pastas por camada: controllers/, services/, repositories/
+
+Arquivos nessas camadas: kebab-case → species-controller.ts, species-service.ts, species-repository.ts
+
+API (REST)
+
+Paths: kebab-case e plural, versionado → /api/v1/species
+
+Query params e payloads JSON: camelCase → ?riskCategory=EN&page=1
+
+Verbo está no método HTTP, não no path
+
+Banco de dados (SQL)
+
+Tabelas, colunas, índices/constraints: snake_case → occurrences, scientific_name, ix_occurrences_taxon_id
+
+Conversão nas bordas: repos convertem snake_case ↔ camelCase (DB ↔ domínio/front)
+
+Arquivos, pastas e URLs
+
+Pastas e utilitários: kebab-case
+
+Test IDs (e2e): kebab-case → data-testid="species-card"
+
+Commits: Conventional Commits (feat:, fix:, …)
+
+Variáveis de ambiente no front
+
+Vite: VITE_* (públicas) → VITE_API_BASE_URL
+
+Next.js: NEXT_PUBLIC_* (públicas); privadas sem prefixo (só server)
+
+se quiser, eu já te entrego um .eslintrc + prettier + editorconfig prontos para reforçar camelCase/PascalCase/UPPER_SNAKE_CASE e proibir exceções.
+
+
+Proximo encontro: 
+
+Equipe de banco, diagrama de entidade e relacionamento do figma todas as tabelas
+
+equipe front : Desenhar a identidade visual da sala de aula virtual da estacio em tailwind, aplicada na tela de login.
+
+equipe back: auth 
+receber os dados da tela de login 
+email / matricula 
+senha 
+
+equipe qualidade: 
+testar a tela de front 
+- email institucional ------ recebe somente email, mostra uma tela de erro.
+- senha 

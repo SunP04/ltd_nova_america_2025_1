@@ -20,6 +20,8 @@ cd frontend
 
 - Construir o container 
 
+``` npm ci ```
+
 ``` docker build -t frontend . ```
 
 - Rodar o container 
@@ -28,7 +30,7 @@ cd frontend
 
 - Para acessar
 
-no navegador: localhost:3001
+no navegador: localhost:3000
 
 - Parar o container
 

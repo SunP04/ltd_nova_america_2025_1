@@ -1,0 +1,29 @@
+services:
+  laravel-auth:
+    build: .
+    container_name: backend-authentication-laravel
+    env_file:
+      - .env
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres-auth
+      DB_PORT: 5432
+      DB_DATABASE: db_auth
+      DB_USERNAME: authdb
+      DB_PASSWORD: eSt@c1oLTd
+      APP_URL: http://localhost:8001
+    depends_on:
+      postgres-auth:
+        condition: service_started
+    networks:
+      - my-network
+    ports:
+      - "8001:8000"
+    volumes:
+      - .:/var/www/html
+      - /var/www/html/vendor
+      - /var/www/html/node_modules
+
+networks:
+  my-network:
+    external: true

@@ -1,23 +1,20 @@
-import {
-  IsEmail,
-  IsString,
-  MinLength,
-  MaxLength,
-  Matches,
-  IsNotEmpty,
-} from 'class-validator';
-import { Role } from 'src/enums/roles.enum';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class LoginDto {
-
-  @IsEmail()
-  email: string;
-
+  @ApiProperty({ example: 'admin', description: 'Username or e-mail' })
   @IsString()
-  @IsNotEmpty()
-  @MinLength(4)
-  @MaxLength(500)
-  @Matches(/((?=.*\d)|(?=.*\W+))(?![.\n])(?=.*[A-Z])(?=.*[a-z]).*$/)
-  password: string;
+  @MinLength(3)
+  identifier!: string;
 
+  @ApiProperty({ example: 'admin', minLength: 8 })
+  @IsString()
+  @MinLength(8)
+  password!: string;
+
+  @ApiProperty({ example: '123456', required: false })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{6}$/)
+  twoFactorCode?: string;
 }

@@ -1,103 +1,154 @@
-import { HttpException, HttpStatus, Injectable, NotFoundException, OnModuleInit } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
-import { User } from './user.entity';
-import { Repository } from 'typeorm';
-import { Role } from '../enums/roles.enum';
-import { HashingService } from 'src/auth/hashing/hashing.service';
-
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
+import { UserProfileDto } from './dto/user-profile.dto';
+import { User } from './entities/user.entity';
+import { Role } from './entities/role.entity';
+import { Institution } from './entities/institution.entity';
 
+interface CreateUserOptions {
+  email: string;
+  username: string;
+  passwordHash: string;
+  name: string;
+  institutionCodes: string[];
+  roleNames?: string[];
+  emailVerified?: boolean;
+}
 
 @Injectable()
-export class UsersService implements OnModuleInit {
+export class UsersService {
   constructor(
+    @InjectRepository(User)
+    private readonly usersRepository: Repository<User>,
+    @InjectRepository(Role)
+    private readonly rolesRepository: Repository<Role>,
+    @InjectRepository(Institution)
+    private readonly institutionsRepository: Repository<Institution>
+  ) {}
 
-    @Inject('USER_REPOSITORY')
-    private readonly userRepository: Repository<User>,
-    private readonly hashingService: HashingService,
-  ) { }
+  async create(options: CreateUserOptions): Promise<User> {
+    const roles = await this.resolveRoles(options.roleNames ?? ['user']);
+    const institutions = await this.resolveInstitutions(options.institutionCodes);
 
-
-  async onModuleInit() {
-    const count = await this.userRepository.count();
-    if (count === 0) {
-      await this.createExampleUser();
-    }
-  }
-
-  async create(data: CreateUserDto): Promise<User> {
-
-    //falta controle de erros para um usuario duplicado
-    data.password = await this.hashingService.hash(data.password);
-
-
-    const user = this.userRepository.create(data);
-    return this.userRepository.save(user);
-
-    // }catch (e) {
-   // console.log(e);
-    // if (e.code=='23505') {
-    //   throw new NotFoundException(`(email)=${data.email} already exists.`);
-    // }
-    // return  data;
-    // }
-  }
-
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find();
-  }
-
-  async findOne(email: string): Promise<User> {
-    const user = await this.userRepository.findOneBy({ email });
-    if (!user) {
-      throw new Error(`Usuário não encontrado`);
-    }
-    return user;
-  }
-
-  async createExampleUser(): Promise<User> {
-    const exampleUser: CreateUserDto = {
-      name: 'Admin',
-      email: 'example@example.com',
-      password: await this.hashingService.hash('PAssword123*'),
-      role: Role.ADMIN,
-      is_active: true,
-    };
-    const user = this.userRepository.create(exampleUser);
-    return this.userRepository.save(user);
-  }
-
-  async update(id: number, updateUserDto: UpdateUserDto) {
-
-    if (updateUserDto?.password) {
-      updateUserDto.password = await this.hashingService.hash(updateUserDto.password);
-    }
-
-
-    const userUpdate = await this.userRepository.preload({
-      id,
-      ...updateUserDto
+    const user = this.usersRepository.create({
+      email: options.email,
+      username: options.username,
+      passwordHash: options.passwordHash,
+      name: options.name,
+      roles,
+      institutions,
+      isEmailVerified: options.emailVerified ?? false
     });
 
-    if (!userUpdate) {
-      throw new NotFoundException('User not found');
-    }
-
-    return this.userRepository.save(userUpdate);
-
+    return this.usersRepository.save(user);
   }
 
-  async findByEmail(email: string): Promise<User> {
-    console.log("findbyemail"+email);
-    const user = await this.userRepository.findOneBy({ email });
-    if (!user) {
-      throw new HttpException(`User with ${email} not found`, HttpStatus.NOT_FOUND);
-    }
-    return user;
+  findByEmail(email: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { email } });
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} user`;
+  findByUsername(username: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { username } });
+  }
+
+  findById(id: string): Promise<User | null> {
+    return this.usersRepository.findOne({ where: { id } });
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.usersRepository.update({ id: userId }, { passwordHash });
+  }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    await this.usersRepository.update({ id: userId }, { isEmailVerified: true });
+  }
+
+  async saveTwoFactorSecret(userId: string, secret: string, recoveryCodes: string[]): Promise<void> {
+    await this.usersRepository.update(
+      { id: userId },
+      { twoFactorSecret: secret, twoFactorRecoveryCodes: recoveryCodes, twoFactorEnabled: false }
+    );
+  }
+
+  async clearTwoFactorSecret(userId: string): Promise<void> {
+    await this.usersRepository.update(
+      { id: userId },
+      { twoFactorSecret: null, twoFactorRecoveryCodes: [], twoFactorEnabled: false }
+    );
+  }
+
+  async setTwoFactorEnabled(userId: string, enabled: boolean): Promise<void> {
+    await this.usersRepository.update({ id: userId }, { twoFactorEnabled: enabled });
+  }
+
+  async findByIdWithSecret(userId: string): Promise<User | null> {
+    return this.usersRepository.findOne({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        passwordHash: true,
+        name: true,
+        createdAt: true,
+        updatedAt: true,
+        twoFactorEnabled: true,
+        twoFactorSecret: true,
+        twoFactorRecoveryCodes: true,
+        isEmailVerified: true
+      },
+      relations: { roles: true, institutions: true }
+    });
+  }
+
+  toProfile(user: User): UserProfileDto {
+    return {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      name: user.name,
+      roles: user.roles.map((role) => role.name),
+      institutions: user.institutions.map((institution) => institution.code),
+      twoFactorEnabled: user.twoFactorEnabled,
+      isEmailVerified: user.isEmailVerified,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt
+    };
+  }
+
+  private async resolveRoles(roleNames: string[]): Promise<Role[]> {
+    if (roleNames.length === 0) {
+      roleNames = ['user'];
+    }
+
+    const existing = await this.rolesRepository.find({ where: { name: In(roleNames) } });
+    const missingNames = roleNames.filter((name) => !existing.find((role) => role.name === name));
+
+    const created = missingNames.map((name) => this.rolesRepository.create({ name }));
+    if (created.length > 0) {
+      await this.rolesRepository.save(created);
+    }
+
+    return [...existing, ...created];
+  }
+
+  private async resolveInstitutions(codes: string[]): Promise<Institution[]> {
+    if (codes.length === 0) {
+      throw new Error('At least one institution must be provided');
+    }
+
+    const existing = await this.institutionsRepository.find({ where: { code: In(codes) } });
+    const missingCodes = codes.filter((code) => !existing.find((institution) => institution.code === code));
+
+    const created = missingCodes.map((code) =>
+      this.institutionsRepository.create({ code, name: code.toUpperCase() })
+    );
+
+    if (created.length > 0) {
+      await this.institutionsRepository.save(created);
+    }
+
+    return [...existing, ...created];
   }
 }
